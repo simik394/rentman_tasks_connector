@@ -431,3 +431,60 @@ Nyní mohou být `Funkce 1, 2, 3` definovány jako funkce volané tímto dispatc
     1. Používat `data-testid` a `data-qa` selektory (které jsme identifikovali) má nejvyšší prioritu. Jsou méně náchylné ke změnám než třídy (class) nebo text.
         
     2. Workflow _musí_ mít robustní error handling (viz Fáze 3, krok 4). Pokud skript selže, musí okamžitě poslat notifikaci administrátorovi, který provede ruční opravu selektorů ve skriptu `bot.js`.
+
+## 6. Manuální Kroky k Dokončení
+
+Tento repozitář obsahuje automatizační skript (`bot.js`), ale pro plnou funkčnost je nutné provést následující kroky v externích systémech.
+
+### 6.1. Nastavení Prostředí a Spuštění Bota
+
+1.  **Nainstalujte závislosti:**
+    V adresáři `playwright_bot` spusťte příkaz:
+    ```bash
+    npm install
+    ```
+2.  **Nainstalujte Playwright prohlížeče:**
+    ```bash
+    npx playwright install --with-deps
+    ```
+3.  **Nastavte proměnnou prostředí:**
+    Vytvořte `.env` soubor v `playwright_bot` adresáři nebo nastavte systémovou proměnnou prostředí:
+    - `RENTMAN_URL`: URL vaší Rentman instance (např. `https://pragosoundsro.rentmanapp.com`).
+
+4.  **První přihlášení a uložení session (pro uživatele s Google účtem):**
+    Tento krok je nutné provést jednou pro vygenerování souboru `auth.json`, který uchovává vaši přihlašovací session.
+
+    a. Spusťte bota s příkazem `login`:
+    ```bash
+    cd playwright_bot
+    node bot.js login
+    ```
+    b. Otevře se okno prohlížeče s přihlašovací stránkou Rentmanu.
+
+    c. **Manuálně se přihlaste** pomocí vašeho Google účtu.
+
+    d. Po úspěšném přihlášení a načtení hlavní stránky (Dashboardu) skript automaticky detekuje úspěch, uloží session do `auth.json` a zavře okno.
+
+    e. Od této chvíle budou všechny ostatní příkazy (`createTask`, `scrapeDoneTasks`) používat tuto uloženou session a poběží již bez nutnosti interakce (headless).
+
+### 6.2. Import a Konfigurace n8n Workflows
+
+1.  **Importujte JSON soubory:**
+    - V n8n jděte do "Workflows" a klikněte na "Import from File".
+    - Nahrajte `1_youtrack_to_rentman.json` a `2_rentman_to_youtrack.json` z adresáře `n8n_workflows`.
+
+2.  **Nastavte "Credentials" v n8n:**
+    - **YouTrack API Token:** Vytvořte v YouTracku a uložte do n8n jako "YouTrack API".
+    - **Rentman Údaje:** Uložte přihlašovací údaje bota do n8n (např. jako "Generic Credential"), i když je `bot.js` používá z `.env`. Pomůže to udržet přehled.
+
+3.  **Nakonfigurujte `Execute Command` Nody:**
+    - V obou workflows najděte node "Execute Command".
+    - **Upravte cestu:** Změňte `cd /cesta/k/botu` na absolutní cestu k `playwright_bot` adresáři na vašem serveru.
+    - Ujistěte se, že uživatel, pod kterým běží n8n, má právo spouštět `node`.
+
+4.  **Nakonfigurujte YouTrack Nody:**
+    - Propojte YouTrack nody s vašimi "YouTrack API" credentials.
+    - Upravte názvy stavů ("Done") a polí (`Deadline`), aby odpovídaly vaší YouTrack konfiguraci.
+
+5.  **Aktivujte Workflows:**
+    - Zapněte oba workflows v n8n.

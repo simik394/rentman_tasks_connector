@@ -1,0 +1,5 @@
+# Dependencies
+/playwright_bot/node_modules
+
+# Session file
+/playwright_bot/auth.json
