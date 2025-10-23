@@ -1,0 +1,10 @@
+{
+  "name": "playwright_bot",
+  "version": "1.0.0",
+  "description": "Playwright bot for Rentman automation",
+  "main": "bot.js",
+  "type": "module",
+  "dependencies": {
+    "playwright": "^1.40.0"
+  }
+}

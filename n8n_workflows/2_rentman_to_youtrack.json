@@ -1,0 +1,190 @@
+{
+  "name": "2 Rentman to YouTrack",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": "custom",
+        "customExpression": "*/5 * * * *"
+      },
+      "name": "Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "command": "cd /path/to/your/repo/playwright_bot && node bot.js scrapeDoneTasks"
+      },
+      "name": "Execute Scrape Tasks",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const stdout = $json.stdout;\ntry {\n  $json.youtrackIds = JSON.parse(stdout);\n} catch (e) {\n  throw new Error('Could not parse JSON from stdout: ' + stdout);\n}\nreturn $json;"
+      },
+      "name": "Parse IDs",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        750,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "youtrackIds",
+        "options": {}
+      },
+      "name": "Split IDs",
+      "type": "n8n-nodes-base.itemLists",
+      "typeVersion": 1,
+      "position": [
+        1000,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "issue",
+        "operation": "get",
+        "issueId": "{{$json.youtrackIds}}",
+        "additionalFields": {}
+      },
+      "name": "Get YouTrack Issue",
+      "type": "n8n-nodes-base.youTrack",
+      "typeVersion": 1,
+      "position": [
+        1250,
+        300
+      ],
+      "credentials": {
+        "youTrackApi": {
+          "id": "your-youtrack-credentials-id",
+          "name": "YouTrack credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "{{$json.fields.State.name}}",
+              "operation": "notEqual",
+              "value2": "Done"
+            }
+          ]
+        }
+      },
+      "name": "Is Not Done?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "issue",
+        "operation": "update",
+        "issueId": "{{$json.youtrackIds}}",
+        "command": "State Done",
+        "comment": "Automaticky uzavřeno na základě stavu 'Hotovo' v Rentmanu.",
+        "additionalFields": {}
+      },
+      "name": "Update YouTrack Issue",
+      "type": "n8n-nodes-base.youTrack",
+      "typeVersion": 1,
+      "position": [
+        1750,
+        300
+      ],
+      "credentials": {
+        "youTrackApi": {
+          "id": "your-youtrack-credentials-id",
+          "name": "YouTrack credentials"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule": {
+      "main": [
+        [
+          {
+            "node": "Execute Scrape Tasks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Scrape Tasks": {
+      "main": [
+        [
+          {
+            "node": "Parse IDs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse IDs": {
+      "main": [
+        [
+          {
+            "node": "Split IDs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split IDs": {
+      "main": [
+        [
+          {
+            "node": "Get YouTrack Issue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get YouTrack Issue": {
+      "main": [
+        [
+          {
+            "node": "Is Not Done?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Not Done?": {
+      "main": [
+        [
+          {
+            "node": "Update YouTrack Issue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {},
+  "id": "2"
+}

@@ -1,0 +1,70 @@
+{
+  "name": "1 YouTrack to Rentman",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "youtrack-webhook",
+        "options": {}
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "webhookId": "youtrack-webhook-trigger"
+    },
+    {
+      "parameters": {
+        "functionCode": "const issue = $json.body.issue;\nconst userMap = {\n  'pavel': 'Pavel Novák',\n  'tomas': 'Tomáš Novotný'\n  // Add other user mappings here\n};\n\n// Find the user tag (e.g., #pavel, #tomas)\nconst userTag = issue.tags.find(tag => Object.keys(userMap).includes(tag.name));\n\n// Check for required tags\nconst hasRMTag = issue.tags.some(tag => tag.name === 'RM');\n\nif (!hasRMTag || !userTag) {\n  console.log('Skipping issue: Missing #RM tag or a valid user tag.');\n  return []; // Stop the workflow\n}\n\n// Find deadline custom field\nconst deadlineField = issue.customFields.find(cf => cf.projectCustomField.field.name === 'Deadline');\n\nconst taskData = {\n  youtrackId: issue.idReadable,\n  title: issue.summary,\n  assignee: userMap[userTag.name],\n  deadline: deadlineField ? deadlineField.value : null\n};\n\n$json.taskData = taskData;\n\nreturn $json;"
+      },
+      "name": "Map Data",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "command": "cd /path/to/your/repo/playwright_bot && node bot.js createTask --data='{{$json.taskData}}'"
+      },
+      "name": "Execute Create Task",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        750,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Map Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map Data": {
+      "main": [
+        [
+          {
+            "node": "Execute Create Task",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {},
+  "id": "1"
+}
