@@ -1,5 +1,7 @@
 # Dependencies
 /playwright_bot/node_modules
 
-# Session file
-/playwright_bot/auth.json
+# Playwright user data
+/playwright_bot/playwright-user-data
+
+**aboutplaywright.txt
