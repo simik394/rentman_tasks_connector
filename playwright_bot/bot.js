@@ -6,13 +6,14 @@ const USER_DATA_DIR = path.join(process.cwd(), 'playwright-user-data');
 // --- Funkce ---
 
 /**
- * Initiates an interactive login process using a persistent browser context.
+ * Initiates an interactive login process using the system's installed Google Chrome.
  * @param {string} loginUrl
  */
 async function login(loginUrl) {
     console.log(`Using user data directory: ${USER_DATA_DIR}`);
     const context = await chromium.launchPersistentContext(USER_DATA_DIR, {
         headless: false,
+        channel: 'chrome', // Use the system's installed Google Chrome
     });
     const page = context.pages().length ? context.pages()[0] : await context.newPage();
 
@@ -148,6 +149,7 @@ async function scrapeDoneTasks(page) {
         // For other commands, use the persistent context in headless mode
         const context = await chromium.launchPersistentContext(USER_DATA_DIR, {
             headless: true,
+            channel: 'chrome', // Use the system's installed Google Chrome
         });
         const page = await context.newPage();
 

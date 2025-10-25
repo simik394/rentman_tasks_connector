@@ -438,28 +438,29 @@ Tento repozitář obsahuje automatizační skript (`bot.js`), ale pro plnou funk
 
 ### 6.1. Nastavení Prostředí a Spuštění Bota
 
-1.  **Nainstalujte závislosti:**
+1.  **Nainstalujte Google Chrome:**
+    Ujistěte se, že na stroji, kde poběží bot, je nainstalovaný **Google Chrome**. Skript je nastaven tak, aby používal existující instalaci Chrome, a tím obešel bezpečnostní omezení Google.
+
+2.  **Nainstalujte závislosti:**
     V adresáři `playwright_bot` spusťte příkaz:
     ```bash
     npm install
     ```
-2.  **Nainstalujte Playwright prohlížeče:**
+3.  **Nainstalujte Playwright prohlížeče:**
+    I když budeme používat systémový Chrome, tento krok zajistí, že všechny potřebné závislosti pro Playwright jsou splněny.
     ```bash
     npx playwright install --with-deps
     ```
-3.  **Nastavte proměnnou prostředí:**
-    Vytvořte `.env` soubor v `playwright_bot` adresáři nebo nastavte systémovou proměnnou prostředí:
-    - `RENTMAN_URL`: URL vaší Rentman instance (např. `https://pragosoundsro.rentmanapp.com`).
 
 4.  **První přihlášení a vytvoření profilu prohlížeče:**
-    Tento krok je nutné provést jednou, aby si Playwright vytvořil a uložil přihlášený profil prohlížeče. Tímto způsobem obejdeme bezpečnostní omezení Google pro automatizované prohlížeče.
+    Tento krok je nutné provést jednou, aby si Playwright vytvořil a uložil přihlášený profil prohlížeče ve vašem **lokálním Google Chrome**.
 
     a. Spusťte bota s příkazem `login`:
     ```bash
     cd playwright_bot
     node bot.js login
     ```
-    b. Otevře se okno prohlížeče. Může se zobrazit jako "nový" prohlížeč bez vašich obvyklých záložek.
+    b. Otevře se **okno vašeho běžného prohlížeče Google Chrome**, pravděpodobně s novým, čistým profilem.
 
     c. **Manuálně se přihlaste do Rentmanu** pomocí vašeho Google účtu, včetně dvoufázového ověření, pokud ho máte zapnuté.
 
