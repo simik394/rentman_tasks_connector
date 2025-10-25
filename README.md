@@ -451,21 +451,21 @@ Tento repozitář obsahuje automatizační skript (`bot.js`), ale pro plnou funk
     Vytvořte `.env` soubor v `playwright_bot` adresáři nebo nastavte systémovou proměnnou prostředí:
     - `RENTMAN_URL`: URL vaší Rentman instance (např. `https://pragosoundsro.rentmanapp.com`).
 
-4.  **První přihlášení a uložení session (pro uživatele s Google účtem):**
-    Tento krok je nutné provést jednou pro vygenerování souboru `auth.json`, který uchovává vaši přihlašovací session.
+4.  **První přihlášení a vytvoření profilu prohlížeče:**
+    Tento krok je nutné provést jednou, aby si Playwright vytvořil a uložil přihlášený profil prohlížeče. Tímto způsobem obejdeme bezpečnostní omezení Google pro automatizované prohlížeče.
 
     a. Spusťte bota s příkazem `login`:
     ```bash
     cd playwright_bot
     node bot.js login
     ```
-    b. Otevře se okno prohlížeče s přihlašovací stránkou Rentmanu.
+    b. Otevře se okno prohlížeče. Může se zobrazit jako "nový" prohlížeč bez vašich obvyklých záložek.
 
-    c. **Manuálně se přihlaste** pomocí vašeho Google účtu.
+    c. **Manuálně se přihlaste do Rentmanu** pomocí vašeho Google účtu, včetně dvoufázového ověření, pokud ho máte zapnuté.
 
-    d. Po úspěšném přihlášení a načtení hlavní stránky (Dashboardu) skript automaticky detekuje úspěch, uloží session do `auth.json` a zavře okno.
+    d. Po úspěšném přihlášení a načtení hlavní stránky (Dashboardu) můžete okno prohlížeče **zavřít**. Tím se vaše přihlašovací session uloží do adresáře `playwright-user-data`.
 
-    e. Od této chvíle budou všechny ostatní příkazy (`createTask`, `scrapeDoneTasks`) používat tuto uloženou session a poběží již bez nutnosti interakce (headless).
+    e. Od této chvíle budou všechny ostatní příkazy (`createTask`, `scrapeDoneTasks`) používat tento přihlášený profil a poběží již bez nutnosti interakce (headless).
 
 ### 6.2. Import a Konfigurace n8n Workflows
 

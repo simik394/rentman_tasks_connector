@@ -1,16 +1,20 @@
 import { chromium } from 'playwright';
-import { promises as fs } from 'fs';
+import path from 'path';
+
+const USER_DATA_DIR = path.join(process.cwd(), 'playwright-user-data');
 
 // --- Funkce ---
 
 /**
- * Initiates an interactive login process for Rentman and saves the authentication state.
- * This function opens a browser for the user to manually log in (e.g., with Google Sign-In).
+ * Initiates an interactive login process using a persistent browser context.
  * @param {string} loginUrl
  */
 async function login(loginUrl) {
-    const browser = await chromium.launch({ headless: false });
-    const page = await browser.newPage();
+    console.log(`Using user data directory: ${USER_DATA_DIR}`);
+    const context = await chromium.launchPersistentContext(USER_DATA_DIR, {
+        headless: false,
+    });
+    const page = context.pages().length ? context.pages()[0] : await context.newPage();
 
     console.log(`Navigating to ${loginUrl}...`);
     await page.goto(loginUrl);
@@ -18,18 +22,12 @@ async function login(loginUrl) {
     console.log('---------------------------------------------------------');
     console.log('MANUAL ACTION REQUIRED:');
     console.log('Please complete the login in the browser window.');
-    console.log('The script will continue automatically after a successful login...');
+    console.log('Once you are logged in and see the dashboard, you can close this window.');
     console.log('---------------------------------------------------------');
 
-    // Wait for the user to be redirected to the dashboard or another authenticated page.
-    // This selector is a placeholder and should be updated to a reliable selector on the page after login.
-    await page.waitForSelector('text="Dashboard"', { timeout: 120000 }); // 2-minute timeout for manual login
-
-    console.log('Login successful. Saving authentication state to auth.json...');
-    await page.context().storageState({ path: 'auth.json' });
-
-    await browser.close();
-    console.log('Authentication state saved. The bot is now ready to run in headless mode.');
+    // The user will manually close the browser. We add a long timeout
+    // to keep the script alive while they do this.
+    await new Promise(resolve => setTimeout(resolve, 300000)); // 5-minute timeout
 }
 
 /**
@@ -147,18 +145,14 @@ async function scrapeDoneTasks(page) {
             return;
         }
 
-        try {
-            await fs.access('auth.json');
-        } catch (e) {
-            throw new Error('auth.json not found. Please run the login command first.');
-        }
+        // For other commands, use the persistent context in headless mode
+        const context = await chromium.launchPersistentContext(USER_DATA_DIR, {
+            headless: true,
+        });
+        const page = await context.newPage();
 
         const dataArg = process.argv.find(arg => arg.startsWith('--data='));
         const taskData = dataArg ? JSON.parse(dataArg.substring('--data='.length)) : {};
-
-        const browser = await chromium.launch({ headless: true });
-        const context = await browser.newContext({ storageState: 'auth.json' });
-        const page = await context.newPage();
 
         switch (command) {
             case 'createTask':
@@ -173,7 +167,7 @@ async function scrapeDoneTasks(page) {
                 throw new Error(`Neznámý příkaz: ${command}`);
         }
 
-        await browser.close();
+        await context.close();
     } catch (err) {
         console.error(`Error: ${err.message}`);
         process.exit(1);
