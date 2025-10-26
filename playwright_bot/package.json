@@ -5,6 +5,7 @@
   "main": "bot.js",
   "type": "module",
   "dependencies": {
+    "dotenv": "^17.2.3",
     "playwright": "^1.40.0"
   }
 }
