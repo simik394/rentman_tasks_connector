@@ -46,7 +46,7 @@ async function createTask(page, taskData) {
   if (!rentmanUrl) {
     throw new Error("RENTMAN_URL environment variable must be set.");
   }
-  const tasksUrl = `${rentmanUrl}/#/tasks`;
+  const tasksUrl = `${rentmanUrl}#/tasks`;
 
   console.log(`Navigating to tasks page: ${tasksUrl}`);
   await page.goto(tasksUrl);
@@ -103,7 +103,7 @@ async function scrapeDoneTasks(page) {
   if (!rentmanUrl) {
     throw new Error("RENTMAN_URL environment variable must be set.");
   }
-  const tasksUrl = `${rentmanUrl}/#/tasks`;
+  const tasksUrl = `${rentmanUrl}#/tasks`;
 
   console.log(`Navigating to tasks page: ${tasksUrl}`);
   await page.goto(tasksUrl);
