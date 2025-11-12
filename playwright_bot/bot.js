@@ -117,7 +117,7 @@ async function scrapeDoneTasks(page) {
 
   const viewportSelector = '.ui-grid-render-container-body .ui-grid-viewport';
 
-  let lastRowCount = 0;
+  let lastScrollHeight = -1;
   // Loop to handle virtual scrolling
   while (true) {
     const bodyRows = await page.locator('.ui-grid-render-container-body .ui-grid-row').all();
@@ -156,24 +156,26 @@ async function scrapeDoneTasks(page) {
         processedRowIds.add(rowId);
     }
 
-    // Scroll down inside the virtual viewport
-    await page.evaluate((selector) => {
+    // Scroll down inside the virtual viewport and get current scroll height
+    const currentScrollHeight = await page.evaluate((selector) => {
         const viewport = document.querySelector(selector);
         if (viewport) {
-            viewport.scrollTop = viewport.scrollHeight;
+            const height = viewport.scrollHeight;
+            viewport.scrollTop = height;
+            return height;
         }
+        return -1;
     }, viewportSelector);
 
     // Wait for a moment to let new content load
     await page.waitForTimeout(2000);
 
-    // Check if new rows have loaded. If not, we're at the bottom.
-    const newBodyRows = await page.locator('.ui-grid-render-container-body .ui-grid-row').all();
-    if (newBodyRows.length === lastRowCount) {
-        console.log("No new tasks loaded after scrolling. Assuming end of list.");
+    // If the scroll height hasn't changed, we're at the bottom.
+    if (currentScrollHeight === lastScrollHeight) {
+        console.log("Scroll height hasn't changed. Assuming end of list.");
         break;
     }
-    lastRowCount = newBodyRows.length;
+    lastScrollHeight = currentScrollHeight;
   }
 
   const finalIds = Array.from(youtrackIds);

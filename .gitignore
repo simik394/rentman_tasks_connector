@@ -2,8 +2,8 @@
 /playwright_bot/node_modules
 
 # Playwright user data
-/playwright_bot/playwright-user-data
+#/playwright_bot/playwright-user-data
 
 **aboutplaywright.txt
 .zed/settings.json
-playwright-user-data/
+#playwright-user-data/
