@@ -10,6 +10,10 @@
 
 # TODO List - Fáze 2 (Oprava virtuálního scrollingu)
 
-- [ ] Implementovat logiku pro scrollování v `scrapeDoneTasks` pro načtení všech úkolů.
-- [ ] Zajistit, aby se při scrollingu nezpracovávaly duplicitní úkoly.
+- [x] Implementovat logiku pro scrollování v `scrapeDoneTasks` pro načtení všech úkolů. (První pokus, neúspěšný)
+- [x] Zajistit, aby se při scrollingu nezpracovávaly duplicitní úkoly.
+
+# TODO List - Fáze 3 (Oprava virtuálního scrollingu - 2. pokus)
+
+- [ ] Vylepšit logiku pro scrolling v `scrapeDoneTasks` s využitím `scrollHeight` pro spolehlivou detekci konce seznamu.
 - [ ] Odeslat finální kód.
