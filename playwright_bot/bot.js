@@ -94,7 +94,7 @@ async function createTask(page, taskData) {
 }
 
 /**
- * Scrapes completed tasks from the Rentman tasks table view.
+ * Scrapes completed tasks from the Rentman tasks table view, handling virtual scrolling.
  * @param {import('playwright').Page} page
  * @returns {Promise<string[]>} A list of YouTrack issue IDs from completed tasks.
  */
@@ -111,54 +111,74 @@ async function scrapeDoneTasks(page) {
   console.log("Waiting for task grid to load...");
   await page.waitForSelector('.ui-grid-canvas .ui-grid-row', { timeout: 30000 });
 
-  const youtrackIds = [];
+  const youtrackIds = new Set(); // Use a Set to automatically handle duplicates
+  const processedRowIds = new Set();
   const idRegex = /\[([A-Z0-9]+-[0-9]+)\]/;
 
-  console.log('Locating rows in the grid...');
-  // The rows in both panes are linked by a "rowid" attribute.
-  // We'll iterate through the rows in the right pane (body) to check the date.
-  const bodyRows = await page.locator('.ui-grid-render-container-body .ui-grid-row').all();
+  const viewportSelector = '.ui-grid-render-container-body .ui-grid-viewport';
 
-  console.log(`Found ${bodyRows.length} rows to process.`);
+  let lastRowCount = 0;
+  // Loop to handle virtual scrolling
+  while (true) {
+    const bodyRows = await page.locator('.ui-grid-render-container-body .ui-grid-row').all();
 
-  for (const row of bodyRows) {
-    // The "Completed on" column seems to have a specific ui-grid-col class.
-    // Based on the HTML, it's ui-grid-coluiGrid-000C.
-    const completedOnCell = row.locator('.ui-grid-coluiGrid-000C .ui-grid-cell-contents__overflow-container');
-    const completedOnText = await completedOnCell.textContent({ timeout: 1000 });
+    console.log(`Processing ${bodyRows.length} visible rows...`);
 
-    // Check if the date text is not the placeholder for an empty date.
-    if (completedOnText && completedOnText.trim() !== '--/--/---- --:--') {
-      const rowIdElement = row.locator('div[rowid]');
-      const rowId = await rowIdElement.getAttribute('rowid');
+    for (const row of bodyRows) {
+        const rowIdElement = row.locator('div[rowid]');
+        const rowId = await rowIdElement.getAttribute('rowid');
 
-      if (rowId) {
-        console.log(`Found completed task in row ${rowId} with date "${completedOnText.trim()}".`);
-
-        // Now find the corresponding row in the left (pinned) pane using the same rowId.
-        const leftRow = page.locator(`.ui-grid-render-container-left div[rowid="${rowId}"]`);
-
-        // The task title is in the 'title' attribute of this specific div.
-        const titleCell = leftRow.locator('.ui-grid-cell-contents--title-cell-contents');
-        const title = await titleCell.getAttribute('title');
-
-        if (title) {
-          const match = title.match(idRegex);
-          if (match && match[1]) {
-            console.log(`Extracted YouTrack ID: ${match[1]}`);
-            youtrackIds.push(match[1]);
-          } else {
-            console.log(`Row ${rowId} is completed, but no YouTrack ID found in title: "${title}"`);
-          }
-        } else {
-             console.log(`Could not find title for completed row ${rowId}.`);
+        // Skip if we've already processed this row
+        if (!rowId || processedRowIds.has(rowId)) {
+            continue;
         }
-      }
+
+        const completedOnCell = row.locator('.ui-grid-coluiGrid-000C .ui-grid-cell-contents__overflow-container');
+        // Use catch to prevent timeouts on rows that might be disappearing during scroll
+        const completedOnText = await completedOnCell.textContent({ timeout: 1000 }).catch(() => null);
+
+        if (completedOnText && completedOnText.trim() !== '--/--/---- --:--') {
+            console.log(`Found completed task in row ${rowId} with date "${completedOnText.trim()}".`);
+
+            const leftRow = page.locator(`.ui-grid-render-container-left div[rowid="${rowId}"]`);
+            const titleCell = leftRow.locator('.ui-grid-cell-contents--title-cell-contents');
+            const title = await titleCell.getAttribute('title');
+
+            if (title) {
+                const match = title.match(idRegex);
+                if (match && match[1]) {
+                    console.log(`Extracted YouTrack ID: ${match[1]}`);
+                    youtrackIds.add(match[1]);
+                }
+            }
+        }
+
+        processedRowIds.add(rowId);
     }
+
+    // Scroll down inside the virtual viewport
+    await page.evaluate((selector) => {
+        const viewport = document.querySelector(selector);
+        if (viewport) {
+            viewport.scrollTop = viewport.scrollHeight;
+        }
+    }, viewportSelector);
+
+    // Wait for a moment to let new content load
+    await page.waitForTimeout(2000);
+
+    // Check if new rows have loaded. If not, we're at the bottom.
+    const newBodyRows = await page.locator('.ui-grid-render-container-body .ui-grid-row').all();
+    if (newBodyRows.length === lastRowCount) {
+        console.log("No new tasks loaded after scrolling. Assuming end of list.");
+        break;
+    }
+    lastRowCount = newBodyRows.length;
   }
 
-  console.log(`Extracted a total of ${youtrackIds.length} YouTrack IDs: ${JSON.stringify(youtrackIds)}`);
-  return youtrackIds;
+  const finalIds = Array.from(youtrackIds);
+  console.log(`Extracted a total of ${finalIds.length} unique YouTrack IDs: ${JSON.stringify(finalIds)}`);
+  return finalIds;
 }
 
 // --- Hlavní Dispatcher ---
