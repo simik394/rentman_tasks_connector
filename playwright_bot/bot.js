@@ -94,55 +94,70 @@ async function createTask(page, taskData) {
 }
 
 /**
- * Scrapes the "Done" column in Rentman for YouTrack issue IDs.
+ * Scrapes completed tasks from the Rentman tasks table view.
  * @param {import('playwright').Page} page
- * @returns {Promise<string[]>} A list of YouTrack issue IDs.
+ * @returns {Promise<string[]>} A list of YouTrack issue IDs from completed tasks.
  */
 async function scrapeDoneTasks(page) {
   const rentmanUrl = process.env.RENTMAN_URL;
   if (!rentmanUrl) {
     throw new Error("RENTMAN_URL environment variable must be set.");
   }
-  const tasksUrl = `${rentmanUrl}#/tasks`;
+  const tasksUrl = `${rentmanUrl}/#/tasks`;
 
   console.log(`Navigating to tasks page: ${tasksUrl}`);
   await page.goto(tasksUrl);
 
-  console.log("Waiting for Kanban board to load...");
-  await page.waitForSelector('div[data-testid^="kanban-column-"]', {
-    timeout: 30000,
-  });
-
-  console.log('Locating the "Hotovo" (Done) column...');
-  const doneColumn = page.locator(
-    'div[data-testid^="kanban-column-"]:has(div:text("Hotovo"))',
-  );
-  await doneColumn.waitFor();
-
-  console.log('Finding all cards in the "Done" column...');
-  const completedCards = await doneColumn
-    .locator('[data-testid^="kanban-card-"]')
-    .all();
+  console.log("Waiting for task grid to load...");
+  await page.waitForSelector('.ui-grid-canvas .ui-grid-row', { timeout: 30000 });
 
   const youtrackIds = [];
   const idRegex = /\[([A-Z0-9]+-[0-9]+)\]/;
 
-  console.log(
-    `Found ${completedCards.length} completed cards. Extracting YouTrack IDs...`,
-  );
-  for (const card of completedCards) {
-    const title = await card
-      .locator('[data-testid="kanban-card-title"]')
-      .textContent();
-    if (title) {
-      const match = title.match(idRegex);
-      if (match && match[1]) {
-        youtrackIds.push(match[1]);
+  console.log('Locating rows in the grid...');
+  // The rows in both panes are linked by a "rowid" attribute.
+  // We'll iterate through the rows in the right pane (body) to check the date.
+  const bodyRows = await page.locator('.ui-grid-render-container-body .ui-grid-row').all();
+
+  console.log(`Found ${bodyRows.length} rows to process.`);
+
+  for (const row of bodyRows) {
+    // The "Completed on" column seems to have a specific ui-grid-col class.
+    // Based on the HTML, it's ui-grid-coluiGrid-000C.
+    const completedOnCell = row.locator('.ui-grid-coluiGrid-000C .ui-grid-cell-contents__overflow-container');
+    const completedOnText = await completedOnCell.textContent({ timeout: 1000 });
+
+    // Check if the date text is not the placeholder for an empty date.
+    if (completedOnText && completedOnText.trim() !== '--/--/---- --:--') {
+      const rowIdElement = row.locator('div[rowid]');
+      const rowId = await rowIdElement.getAttribute('rowid');
+
+      if (rowId) {
+        console.log(`Found completed task in row ${rowId} with date "${completedOnText.trim()}".`);
+
+        // Now find the corresponding row in the left (pinned) pane using the same rowId.
+        const leftRow = page.locator(`.ui-grid-render-container-left div[rowid="${rowId}"]`);
+
+        // The task title is in the 'title' attribute of this specific div.
+        const titleCell = leftRow.locator('.ui-grid-cell-contents--title-cell-contents');
+        const title = await titleCell.getAttribute('title');
+
+        if (title) {
+          const match = title.match(idRegex);
+          if (match && match[1]) {
+            console.log(`Extracted YouTrack ID: ${match[1]}`);
+            youtrackIds.push(match[1]);
+          } else {
+            console.log(`Row ${rowId} is completed, but no YouTrack ID found in title: "${title}"`);
+          }
+        } else {
+             console.log(`Could not find title for completed row ${rowId}.`);
+        }
       }
     }
   }
 
-  console.log(`Extracted YouTrack IDs: ${JSON.stringify(youtrackIds)}`);
+  console.log(`Extracted a total of ${youtrackIds.length} YouTrack IDs: ${JSON.stringify(youtrackIds)}`);
   return youtrackIds;
 }
 
@@ -188,6 +203,13 @@ async function scrapeDoneTasks(page) {
       case "scrapeDoneTasks":
         const tasks = await scrapeDoneTasks(page);
         console.log(JSON.stringify(tasks));
+        break;
+      case "testScrape":
+        console.log("Running in test scrape mode...");
+        const testTasks = await scrapeDoneTasks(page);
+        console.log("--- Test Scrape Results ---");
+        console.log(JSON.stringify(testTasks, null, 2));
+        console.log("---------------------------");
         break;
       default:
         throw new Error(`Neznámý příkaz: ${command}`);
