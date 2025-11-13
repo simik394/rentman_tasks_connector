@@ -1,9 +1,16 @@
 # Dependencies
 /playwright_bot/node_modules
 
-# Playwright user data
-#/playwright_bot/playwright-user-data
+# Environment variables
+/playwright_bot/.env
 
-**aboutplaywright.txt
-.zed/settings.json
-#playwright-user-data/
+# Playwright reports
+/playwright_bot/playwright-report/
+/playwright_bot/test-results/
+
+# Authentication state
+/playwright_bot/auth.json
+
+# Debug artifacts
+/playwright_bot/*.png
+/playwright_bot/*.html
