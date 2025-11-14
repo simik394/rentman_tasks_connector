@@ -74,7 +74,7 @@ async function createTask(page, taskData) {
 /**
  * Scrapes completed tasks from the Rentman tasks table view, handling virtual scrolling.
  * @param {import('playwright').Page} page
- * @returns {Promise<object[]>} A list of YouTrack issue IDs from completed tasks.
+ * @returns {Promise<string[]>} A list of YouTrack issue IDs from completed tasks.
  */
 async function scrapeDoneTasks(page) {
   let rentmanUrl = process.env.RENTMAN_URL;
@@ -88,67 +88,72 @@ async function scrapeDoneTasks(page) {
   await page.goto(tasksUrl);
 
   console.log("Waiting for task grid to load...");
-  await page.waitForSelector('.ui-grid-canvas .ui-grid-row', { timeout: 30000 });
+  await page.waitForSelector('.ui-grid-canvas', { timeout: 30000 });
 
-  const completedTasks = [];
+  const youtrackIds = new Set();
   const processedRowIds = new Set();
   const idRegex = /\[([A-Z0-9]+-[0-9]+)\]/;
 
   const viewportSelector = '.ui-grid-render-container-body .ui-grid-viewport';
+  const rightPaneRowSelector = '.ui-grid-render-container-body .ui-grid-row';
+  const leftPaneSelector = '.ui-grid-render-container-left';
 
-  let lastProcessedCount = -1;
+  let lastScrollHeight = -1;
+  let scrollAttempts = 0;
+  const MAX_STALLED_ATTEMPTS = 3;
 
-  // Loop to handle virtual scrolling
-  while (processedRowIds.size > lastProcessedCount) {
-    lastProcessedCount = processedRowIds.size;
-    const bodyRows = await page.locator('.ui-grid-render-container-body .ui-grid-row').all();
-
-    console.log(`Processing ${bodyRows.length} visible rows...`);
+  while (scrollAttempts < MAX_STALLED_ATTEMPTS) {
+    const bodyRows = await page.locator(rightPaneRowSelector).all();
 
     for (const row of bodyRows) {
-      const rowIdElement = row.locator('div[rowid]');
-      const rowId = await rowIdElement.getAttribute('rowid');
+        const rowIdElement = row.locator('div[rowid]').first();
+        const rowId = await rowIdElement.getAttribute('rowid');
 
-      if (!rowId || processedRowIds.has(rowId)) {
-        continue;
-      }
+        if (!rowId || processedRowIds.has(rowId)) {
+            continue;
+        }
 
-      const completedOnCell = row.locator('.ui-grid-coluiGrid-000C .ui-grid-cell-contents__overflow-container');
-      const completedOnText = await completedOnCell.textContent({ timeout: 1000 }).catch(() => null);
+        const completedOnCell = row.locator('.ui-grid-coluiGrid-0008 .ui-grid-cell-contents__overflow-container');
+        const completedOnText = await completedOnCell.textContent({ timeout: 1000 }).catch(() => null);
 
-      if (completedOnText && completedOnText.trim() !== '--/--/---- --:--') {
-        const leftRow = page.locator(`.ui-grid-render-container-left div[rowid="${rowId}"]`);
-        const titleCell = leftRow.locator('.ui-grid-cell-contents--title-cell-contents');
-        const title = await titleCell.getAttribute('title');
+        if (completedOnText && completedOnText.trim() !== '--/--/---- --:--') {
+            const leftRow = page.locator(`${leftPaneSelector} .ui-grid-row:has(div[rowid="${rowId}"])`);
+            const titleCell = leftRow.locator('.ui-grid-cell-contents--title-cell-contents');
+            const title = await titleCell.getAttribute('title', { timeout: 1000 }).catch(() => null);
 
-        const match = title ? title.match(idRegex) : null;
-        const youtrackId = match ? match[1] : null;
-
-        completedTasks.push({
-          rowId: rowId,
-          title: title,
-          completedOn: completedOnText.trim(),
-          youtrackId: youtrackId,
-        });
-      }
-      processedRowIds.add(rowId);
+            if (title) {
+                const match = title.match(idRegex);
+                if (match && match[1]) {
+                    youtrackIds.add(match[1]);
+                }
+            }
+        }
+        processedRowIds.add(rowId);
     }
 
-    // Scroll down multiple times to ensure new content is loaded
-    await page.locator(viewportSelector).click(); // Ensure the viewport is focused
-    for (let i = 0; i < 5; i++) {
-        await page.keyboard.press('PageDown');
-        await page.waitForTimeout(200); // Short delay between presses
-    }
+    const currentScrollHeight = await page.evaluate((selector) => {
+        const viewport = document.querySelector(selector);
+        if (viewport) {
+            const height = viewport.scrollHeight;
+            viewport.scrollTop = height;
+            return height;
+        }
+        return -1;
+    }, viewportSelector);
 
-    // Wait for new content to load
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(2000);
+
+    if (currentScrollHeight === lastScrollHeight) {
+        scrollAttempts++;
+    } else {
+        scrollAttempts = 0;
+    }
+    lastScrollHeight = currentScrollHeight;
   }
 
-  console.log(`Extracted a total of ${completedTasks.length} completed tasks.`);
-  return completedTasks;
+  const finalIds = Array.from(youtrackIds);
+  return finalIds;
 }
-
 
 /**
  * Scrapes all tasks from the Rentman tasks table view for debugging purposes.
@@ -174,7 +179,6 @@ async function scrapeAllTasks(page) {
   const viewportSelector = '.ui-grid-render-container-body .ui-grid-viewport';
 
   let lastScrollHeight = -1;
-  // Loop to handle virtual scrolling
   while (true) {
     const bodyRows = await page.locator('.ui-grid-render-container-body .ui-grid-row').all();
 
@@ -186,11 +190,11 @@ async function scrapeAllTasks(page) {
         continue;
       }
 
-      const leftRow = page.locator(`.ui-grid-render-container-left div[rowid="${rowId}"]`);
+      const leftRow = page.locator(`.ui-grid-render-container-left .ui-grid-row:has(div[rowid="${rowId}"])`);
       const titleCell = leftRow.locator('.ui-grid-cell-contents--title-cell-contents');
       const title = await titleCell.getAttribute('title');
 
-      const completedOnCell = row.locator('.ui-grid-coluiGrid-000C .ui-grid-cell-contents__overflow-container');
+      const completedOnCell = row.locator('.ui-grid-coluiGrid-0008 .ui-grid-cell-contents__overflow-container');
       const completedOnText = await completedOnCell.textContent({ timeout: 1000 }).catch(() => null);
 
       tasks.push({
@@ -219,8 +223,6 @@ async function scrapeAllTasks(page) {
     }
     lastScrollHeight = currentScrollHeight;
   }
-
-  console.log(`Scraped a total of ${tasks.length} tasks.`);
   return tasks;
 }
 
@@ -239,7 +241,6 @@ async function scrapeAllTasks(page) {
         throw new Error(`Authentication file not found at ${AUTH_FILE}. Please run the 'login' command first.`);
     }
 
-    // For other commands, launch a new browser with the saved storage state
     const browser = await chromium.launch({
       headless: true,
       args: ["--no-sandbox"],
@@ -264,31 +265,21 @@ async function scrapeAllTasks(page) {
         );
         break;
       case "scrapeDoneTasks":
-        const tasks = await scrapeDoneTasks(page);
-        const youtrackIds = tasks.map(t => t.youtrackId).filter(id => id);
+        const youtrackIds = await scrapeDoneTasks(page);
         console.log(JSON.stringify(youtrackIds));
         break;
       case "testScrape":
-        console.log("Running in test scrape mode...");
         const testTasks = await scrapeDoneTasks(page);
-        console.log("--- Test Scrape Results ---");
         console.log(JSON.stringify(testTasks, null, 2));
-        console.log("---------------------------");
         break;
       case "scrapeAllTasks":
-        console.log("Running in scrape all tasks mode...");
         const allTasks = await scrapeAllTasks(page);
-
-        // Save to file for verify_scraper.js
         const logDir = path.join(__dirname, 'logs');
         if (!fs.existsSync(logDir)){
             fs.mkdirSync(logDir);
         }
         fs.writeFileSync(path.join(logDir, 'scrape_all_output.json'), JSON.stringify(allTasks, null, 2));
-
-        console.log("--- All Tasks Results (also saved to log file) ---");
         console.log(JSON.stringify(allTasks, null, 2));
-        console.log("-------------------------------------------------");
         break;
       default:
         throw new Error(`Neznámý příkaz: ${command}`);
