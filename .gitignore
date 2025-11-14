@@ -1,9 +1,14 @@
 # Dependencies
-/playwright_bot/node_modules
+playwright_bot/node_modules/
 
 # Playwright user data
-/playwright_bot/playwright-user-data
+playwright_bot/playwright-user-data/
 
+# Playwright auth file
+playwright_bot/.auth/
+
+# IDE settings
+.zed/
+
+# Misc
 **aboutplaywright.txt
-.zed/settings.json
-playwright-user-data/

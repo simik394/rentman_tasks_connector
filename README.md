@@ -434,41 +434,11 @@ Nyní mohou být `Funkce 1, 2, 3` definovány jako funkce volané tímto dispatc
 
 ## 6. Manuální Kroky k Dokončení
 
-Tento repozitář obsahuje automatizační skript (`bot.js`), ale pro plnou funkčnost je nutné provést následující kroky v externích systémech.
+Tento repozitář obsahuje automatizační skript (`bot.js`), ale pro plnou funkčnost je nutné provést následující kroky.
 
-### 6.1. Nastavení Prostředí a Spuštění Bota
+**Podrobný návod na instalaci, konfiguraci a spuštění bota naleznete v souboru [playwright_bot/README.md](playwright_bot/README.md).**
 
-1.  **Nainstalujte Google Chrome:**
-    Ujistěte se, že na stroji, kde poběží bot, je nainstalovaný **Google Chrome**. Skript je nastaven tak, aby používal existující instalaci Chrome, a tím obešel bezpečnostní omezení Google.
-
-2.  **Nainstalujte závislosti:**
-    V adresáři `playwright_bot` spusťte příkaz:
-    ```bash
-    npm install
-    ```
-3.  **Nainstalujte Playwright prohlížeče:**
-    I když budeme používat systémový Chrome, tento krok zajistí, že všechny potřebné závislosti pro Playwright jsou splněny.
-    ```bash
-    npx playwright install --with-deps
-    ```
-
-4.  **První přihlášení a vytvoření profilu prohlížeče:**
-    Tento krok je nutné provést jednou, aby si Playwright vytvořil a uložil přihlášený profil prohlížeče ve vašem **lokálním Google Chrome**.
-
-    a. Spusťte bota s příkazem `login`:
-    ```bash
-    cd playwright_bot
-    node bot.js login
-    ```
-    b. Otevře se **okno vašeho běžného prohlížeče Google Chrome**, pravděpodobně s novým, čistým profilem.
-
-    c. **Manuálně se přihlaste do Rentmanu** pomocí vašeho Google účtu, včetně dvoufázového ověření, pokud ho máte zapnuté.
-
-    d. Po úspěšném přihlášení a načtení hlavní stránky (Dashboardu) můžete okno prohlížeče **zavřít**. Tím se vaše přihlašovací session uloží do adresáře `playwright-user-data`.
-
-    e. Od této chvíle budou všechny ostatní příkazy (`createTask`, `scrapeDoneTasks`) používat tento přihlášený profil a poběží již bez nutnosti interakce (headless).
-
-### 6.2. Import a Konfigurace n8n Workflows
+### 6.1. Import a Konfigurace n8n Workflows
 
 1.  **Importujte JSON soubory:**
     - V n8n jděte do "Workflows" a klikněte na "Import from File".

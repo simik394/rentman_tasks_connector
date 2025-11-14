@@ -1,40 +1,17 @@
 import { chromium } from "playwright";
 import path from "path";
+import { fileURLToPath } from 'url';
 import "dotenv/config";
+import { programmaticLogin } from "./auth.js";
+import fs from "fs";
 
-const USER_DATA_DIR = path.join(process.cwd(), "playwright-user-data");
+// Use __dirname equivalent in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const AUTH_FILE = path.join(__dirname, ".auth", "user.json");
 
 // --- Funkce ---
-
-/**
- * Initiates an interactive login process using the system's installed Google Chrome.
- * @param {string} loginUrl
- */
-async function login(loginUrl) {
-  console.log(`Using user data directory: ${USER_DATA_DIR}`);
-  const context = await chromium.launchPersistentContext(USER_DATA_DIR, {
-    headless: false,
-    channel: "chrome", // Use the system's installed Google Chrome
-  });
-  const page = context.pages().length
-    ? context.pages()[0]
-    : await context.newPage();
-
-  console.log(`Navigating to ${loginUrl}...`);
-  await page.goto(loginUrl);
-
-  console.log("---------------------------------------------------------");
-  console.log("MANUAL ACTION REQUIRED:");
-  console.log("Please complete the login in the browser window.");
-  console.log(
-    "Once you are logged in and see the dashboard, you can close this window.",
-  );
-  console.log("---------------------------------------------------------");
-
-  // The user will manually close the browser. We add a long timeout
-  // to keep the script alive while they do this.
-  await new Promise((resolve) => setTimeout(resolve, 300000)); // 5-minute timeout
-}
 
 /**
  * Creates a new task in Rentman.
@@ -42,17 +19,18 @@ async function login(loginUrl) {
  * @param {object} taskData
  */
 async function createTask(page, taskData) {
-  const rentmanUrl = process.env.RENTMAN_URL;
+  let rentmanUrl = process.env.RENTMAN_URL;
   if (!rentmanUrl) {
     throw new Error("RENTMAN_URL environment variable must be set.");
   }
+  rentmanUrl = rentmanUrl.replace(/^"|"$/g, '');
   const tasksUrl = `${rentmanUrl}#/tasks`;
 
   console.log(`Navigating to tasks page: ${tasksUrl}`);
   await page.goto(tasksUrl);
 
   console.log('Clicking "Add task" button...');
-  await page.click('[data-testid="tasks-overview-add-task-button"]');
+  await page.click('[data-qa="add-item"]');
 
   console.log("Waiting for task modal...");
   await page.waitForSelector('[data-testid="task-form-title-input"]');
@@ -99,10 +77,11 @@ async function createTask(page, taskData) {
  * @returns {Promise<string[]>} A list of YouTrack issue IDs from completed tasks.
  */
 async function scrapeDoneTasks(page) {
-  const rentmanUrl = process.env.RENTMAN_URL;
+  let rentmanUrl = process.env.RENTMAN_URL;
   if (!rentmanUrl) {
     throw new Error("RENTMAN_URL environment variable must be set.");
   }
+  rentmanUrl = rentmanUrl.replace(/^"|"$/g, '');
   const tasksUrl = `${rentmanUrl}#/tasks`;
 
   console.log(`Navigating to tasks page: ${tasksUrl}`);
@@ -189,21 +168,20 @@ async function scrapeDoneTasks(page) {
 
   try {
     if (command === "login") {
-      const loginUrl = process.env.RENTMAN_URL;
-      if (!loginUrl) {
-        throw new Error(
-          "RENTMAN_URL environment variable must be set for login.",
-        );
-      }
-      await login(loginUrl);
+      await programmaticLogin();
       return;
     }
 
-    // For other commands, use the persistent context in headless mode
-    const context = await chromium.launchPersistentContext(USER_DATA_DIR, {
+    if (!fs.existsSync(AUTH_FILE)) {
+        throw new Error(`Authentication file not found at ${AUTH_FILE}. Please run the 'login' command first.`);
+    }
+
+    // For other commands, launch a new browser with the saved storage state
+    const browser = await chromium.launch({
       headless: true,
-      channel: "chrome", // Use the system's installed Google Chrome
+      args: ["--no-sandbox"],
     });
+    const context = await browser.newContext({ storageState: AUTH_FILE });
     const page = await context.newPage();
 
     const dataArg = process.argv.find((arg) => arg.startsWith("--data="));
@@ -237,7 +215,7 @@ async function scrapeDoneTasks(page) {
         throw new Error(`Neznámý příkaz: ${command}`);
     }
 
-    await context.close();
+    await browser.close();
   } catch (err) {
     console.error(`Error: ${err.message}`);
     process.exit(1);
