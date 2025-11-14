@@ -1,0 +1,172 @@
+Running in scrape all tasks mode...
+Navigating to tasks page: https://pragosoundsro.rentmanapp.com/#/tasks
+Waiting for task grid to load...
+Processing 16 visible rows...
+Processing 16 visible rows...
+Processing 16 visible rows...
+Scroll height hasn't changed. Assuming end of list.
+Scraped a total of 32 tasks.
+--- All Tasks Results ---
+[
+  {
+    "rowId": "uiGrid-000E",
+    "title": "konec platnosti dálničních známek (2x Jumper)",
+    "completedOn": "06.02.2023 10:16"
+  },
+  {
+    "rowId": "uiGrid-000G",
+    "title": "Vyzvednout světla u Brumlicha (viz SubRent)",
+    "completedOn": "16.02.2023 14:28"
+  },
+  {
+    "rowId": "uiGrid-000K",
+    "title": "Opravit splitter",
+    "completedOn": "20.02.2023 09:55"
+  },
+  {
+    "rowId": "uiGrid-000I",
+    "title": "objednavka na zitra",
+    "completedOn": "14.02.2023 08:37"
+  },
+  {
+    "rowId": "uiGrid-000D",
+    "title": "STK DAF",
+    "completedOn": "21.02.2023 12:02"
+  },
+  {
+    "rowId": "uiGrid-000L",
+    "title": "Vyzvednout oblečení",
+    "completedOn": "14.02.2023 09:17"
+  },
+  {
+    "rowId": "uiGrid-000M",
+    "title": "Podkládky",
+    "completedOn": "21.02.2023 12:02"
+  },
+  {
+    "rowId": "uiGrid-000N",
+    "title": "Vaky - gravírování",
+    "completedOn": "23.02.2023 13:29"
+  },
+  {
+    "rowId": "uiGrid-000H",
+    "title": "odvoz leyher do skladu -servind",
+    "completedOn": "23.03.2023 15:38"
+  },
+  {
+    "rowId": "uiGrid-000J",
+    "title": "Rigging-kabeláž",
+    "completedOn": "03.04.2023 10:30"
+  },
+  {
+    "rowId": "uiGrid-000P",
+    "title": "příprava Melodie na opravu",
+    "completedOn": "27.03.2023 17:15"
+  },
+  {
+    "rowId": "uiGrid-000R",
+    "title": "obal MS Melodie ",
+    "completedOn": "27.03.2023 21:11"
+  },
+  {
+    "rowId": "uiGrid-000F",
+    "title": "objednávka sklad",
+    "completedOn": "23.03.2023 15:38"
+  },
+  {
+    "rowId": "uiGrid-000S",
+    "title": "Vyzvednout reflexní vesty",
+    "completedOn": "28.03.2023 12:20"
+  },
+  {
+    "rowId": "uiGrid-000O",
+    "title": "Kabelovky a system jezdeni na akce",
+    "completedOn": "10.06.2023 10:40"
+  },
+  {
+    "rowId": "uiGrid-000W",
+    "title": "Aktuální stav kabeláží střecha",
+    "completedOn": "08.05.2023 01:00"
+  },
+  {
+    "rowId": "uiGrid-001F",
+    "title": "cinske desky",
+    "completedOn": "--/--/---- --:--"
+  },
+  {
+    "rowId": "uiGrid-001I",
+    "title": "vylozit dodavku s technikou grebovka",
+    "completedOn": "09.10.2025 12:58"
+  },
+  {
+    "rowId": "uiGrid-001K",
+    "title": "Připravit sklad na inventuru",
+    "completedOn": "--/--/---- --:--"
+  },
+  {
+    "rowId": "uiGrid-001L",
+    "title": "uklidit rozhazenou hromadu MP",
+    "completedOn": "10.10.2025 23:55"
+  },
+  {
+    "rowId": "uiGrid-001J",
+    "title": "test task on equip",
+    "completedOn": "--/--/---- --:--"
+  },
+  {
+    "rowId": "uiGrid-001N",
+    "title": "report 9/10",
+    "completedOn": "--/--/---- --:--"
+  },
+  {
+    "rowId": "uiGrid-001G",
+    "title": "MK SKLÁDEK",
+    "completedOn": "--/--/---- --:--"
+  },
+  {
+    "rowId": "uiGrid-001Q",
+    "title": "spočítat všechen layher,sloucit,do MP",
+    "completedOn": "--/--/---- --:--"
+  },
+  {
+    "rowId": "uiGrid-001R",
+    "title": "vyklidit vsechny kabelovky i material po sklade a zaklizet ",
+    "completedOn": "--/--/---- --:--"
+  },
+  {
+    "rowId": "uiGrid-001T",
+    "title": "rk kozy viz schuzka",
+    "completedOn": "--/--/---- --:--"
+  },
+  {
+    "rowId": "uiGrid-001H",
+    "title": "uklid skladu! doslova vse vsude",
+    "completedOn": "08.10.2025 18:27"
+  },
+  {
+    "rowId": "uiGrid-001M",
+    "title": "layher/cesta do mp",
+    "completedOn": "--/--/---- --:--"
+  },
+  {
+    "rowId": "uiGrid-001P",
+    "title": "misto cinksych desek prostor pro servind",
+    "completedOn": "--/--/---- --:--"
+  },
+  {
+    "rowId": "uiGrid-001S",
+    "title": "layher MZ TOUR",
+    "completedOn": "--/--/---- --:--"
+  },
+  {
+    "rowId": "uiGrid-001U",
+    "title": "Vypakovat Ztracený věci ze skladu",
+    "completedOn": "19.10.2025 21:28"
+  },
+  {
+    "rowId": "uiGrid-001O",
+    "title": "vytvořit virtuální kombinaci pro \"Tool case for carpenters\"",
+    "completedOn": "--/--/---- --:--"
+  }
+]
+---------------------------

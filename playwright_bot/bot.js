@@ -74,7 +74,7 @@ async function createTask(page, taskData) {
 /**
  * Scrapes completed tasks from the Rentman tasks table view, handling virtual scrolling.
  * @param {import('playwright').Page} page
- * @returns {Promise<string[]>} A list of YouTrack issue IDs from completed tasks.
+ * @returns {Promise<object[]>} A list of YouTrack issue IDs from completed tasks.
  */
 async function scrapeDoneTasks(page) {
   let rentmanUrl = process.env.RENTMAN_URL;
@@ -90,10 +90,87 @@ async function scrapeDoneTasks(page) {
   console.log("Waiting for task grid to load...");
   await page.waitForSelector('.ui-grid-canvas .ui-grid-row', { timeout: 30000 });
 
-  const youtrackIds = new Set(); // Use a Set to automatically handle duplicates
+  const completedTasks = [];
   const processedRowIds = new Set();
   const idRegex = /\[([A-Z0-9]+-[0-9]+)\]/;
 
+  const viewportSelector = '.ui-grid-render-container-body .ui-grid-viewport';
+
+  let lastProcessedCount = -1;
+
+  // Loop to handle virtual scrolling
+  while (processedRowIds.size > lastProcessedCount) {
+    lastProcessedCount = processedRowIds.size;
+    const bodyRows = await page.locator('.ui-grid-render-container-body .ui-grid-row').all();
+
+    console.log(`Processing ${bodyRows.length} visible rows...`);
+
+    for (const row of bodyRows) {
+      const rowIdElement = row.locator('div[rowid]');
+      const rowId = await rowIdElement.getAttribute('rowid');
+
+      if (!rowId || processedRowIds.has(rowId)) {
+        continue;
+      }
+
+      const completedOnCell = row.locator('.ui-grid-coluiGrid-000C .ui-grid-cell-contents__overflow-container');
+      const completedOnText = await completedOnCell.textContent({ timeout: 1000 }).catch(() => null);
+
+      if (completedOnText && completedOnText.trim() !== '--/--/---- --:--') {
+        const leftRow = page.locator(`.ui-grid-render-container-left div[rowid="${rowId}"]`);
+        const titleCell = leftRow.locator('.ui-grid-cell-contents--title-cell-contents');
+        const title = await titleCell.getAttribute('title');
+
+        const match = title ? title.match(idRegex) : null;
+        const youtrackId = match ? match[1] : null;
+
+        completedTasks.push({
+          rowId: rowId,
+          title: title,
+          completedOn: completedOnText.trim(),
+          youtrackId: youtrackId,
+        });
+      }
+      processedRowIds.add(rowId);
+    }
+
+    // Scroll down multiple times to ensure new content is loaded
+    await page.locator(viewportSelector).click(); // Ensure the viewport is focused
+    for (let i = 0; i < 5; i++) {
+        await page.keyboard.press('PageDown');
+        await page.waitForTimeout(200); // Short delay between presses
+    }
+
+    // Wait for new content to load
+    await page.waitForTimeout(3000);
+  }
+
+  console.log(`Extracted a total of ${completedTasks.length} completed tasks.`);
+  return completedTasks;
+}
+
+
+/**
+ * Scrapes all tasks from the Rentman tasks table view for debugging purposes.
+ * @param {import('playwright').Page} page
+ * @returns {Promise<object[]>} A list of all visible tasks with their properties.
+ */
+async function scrapeAllTasks(page) {
+  let rentmanUrl = process.env.RENTMAN_URL;
+  if (!rentmanUrl) {
+    throw new Error("RENTMAN_URL environment variable must be set.");
+  }
+  rentmanUrl = rentmanUrl.replace(/^"|"$/g, '');
+  const tasksUrl = `${rentmanUrl}#/tasks`;
+
+  console.log(`Navigating to tasks page: ${tasksUrl}`);
+  await page.goto(tasksUrl);
+
+  console.log("Waiting for task grid to load...");
+  await page.waitForSelector('.ui-grid-canvas .ui-grid-row', { timeout: 30000 });
+
+  const tasks = [];
+  const processedRowIds = new Set();
   const viewportSelector = '.ui-grid-render-container-body .ui-grid-viewport';
 
   let lastScrollHeight = -1;
@@ -101,66 +178,52 @@ async function scrapeDoneTasks(page) {
   while (true) {
     const bodyRows = await page.locator('.ui-grid-render-container-body .ui-grid-row').all();
 
-    console.log(`Processing ${bodyRows.length} visible rows...`);
-
     for (const row of bodyRows) {
-        const rowIdElement = row.locator('div[rowid]');
-        const rowId = await rowIdElement.getAttribute('rowid');
+      const rowIdElement = row.locator('div[rowid]');
+      const rowId = await rowIdElement.getAttribute('rowid');
 
-        // Skip if we've already processed this row
-        if (!rowId || processedRowIds.has(rowId)) {
-            continue;
-        }
+      if (!rowId || processedRowIds.has(rowId)) {
+        continue;
+      }
 
-        const completedOnCell = row.locator('.ui-grid-coluiGrid-000C .ui-grid-cell-contents__overflow-container');
-        // Use catch to prevent timeouts on rows that might be disappearing during scroll
-        const completedOnText = await completedOnCell.textContent({ timeout: 1000 }).catch(() => null);
+      const leftRow = page.locator(`.ui-grid-render-container-left div[rowid="${rowId}"]`);
+      const titleCell = leftRow.locator('.ui-grid-cell-contents--title-cell-contents');
+      const title = await titleCell.getAttribute('title');
 
-        if (completedOnText && completedOnText.trim() !== '--/--/---- --:--') {
-            console.log(`Found completed task in row ${rowId} with date "${completedOnText.trim()}".`);
+      const completedOnCell = row.locator('.ui-grid-coluiGrid-000C .ui-grid-cell-contents__overflow-container');
+      const completedOnText = await completedOnCell.textContent({ timeout: 1000 }).catch(() => null);
 
-            const leftRow = page.locator(`.ui-grid-render-container-left div[rowid="${rowId}"]`);
-            const titleCell = leftRow.locator('.ui-grid-cell-contents--title-cell-contents');
-            const title = await titleCell.getAttribute('title');
+      tasks.push({
+        rowId: rowId,
+        title: title,
+        completedOn: completedOnText ? completedOnText.trim() : null,
+      });
 
-            if (title) {
-                const match = title.match(idRegex);
-                if (match && match[1]) {
-                    console.log(`Extracted YouTrack ID: ${match[1]}`);
-                    youtrackIds.add(match[1]);
-                }
-            }
-        }
-
-        processedRowIds.add(rowId);
+      processedRowIds.add(rowId);
     }
 
-    // Scroll down inside the virtual viewport and get current scroll height
     const currentScrollHeight = await page.evaluate((selector) => {
-        const viewport = document.querySelector(selector);
-        if (viewport) {
-            const height = viewport.scrollHeight;
-            viewport.scrollTop = height;
-            return height;
-        }
-        return -1;
+      const viewport = document.querySelector(selector);
+      if (viewport) {
+        const height = viewport.scrollHeight;
+        viewport.scrollTop = height;
+        return height;
+      }
+      return -1;
     }, viewportSelector);
 
-    // Wait for a moment to let new content load
     await page.waitForTimeout(2000);
 
-    // If the scroll height hasn't changed, we're at the bottom.
     if (currentScrollHeight === lastScrollHeight) {
-        console.log("Scroll height hasn't changed. Assuming end of list.");
-        break;
+      break;
     }
     lastScrollHeight = currentScrollHeight;
   }
 
-  const finalIds = Array.from(youtrackIds);
-  console.log(`Extracted a total of ${finalIds.length} unique YouTrack IDs: ${JSON.stringify(finalIds)}`);
-  return finalIds;
+  console.log(`Scraped a total of ${tasks.length} tasks.`);
+  return tasks;
 }
+
 
 // --- Hlavní Dispatcher ---
 (async () => {
@@ -202,7 +265,8 @@ async function scrapeDoneTasks(page) {
         break;
       case "scrapeDoneTasks":
         const tasks = await scrapeDoneTasks(page);
-        console.log(JSON.stringify(tasks));
+        const youtrackIds = tasks.map(t => t.youtrackId).filter(id => id);
+        console.log(JSON.stringify(youtrackIds));
         break;
       case "testScrape":
         console.log("Running in test scrape mode...");
@@ -210,6 +274,21 @@ async function scrapeDoneTasks(page) {
         console.log("--- Test Scrape Results ---");
         console.log(JSON.stringify(testTasks, null, 2));
         console.log("---------------------------");
+        break;
+      case "scrapeAllTasks":
+        console.log("Running in scrape all tasks mode...");
+        const allTasks = await scrapeAllTasks(page);
+
+        // Save to file for verify_scraper.js
+        const logDir = path.join(__dirname, 'logs');
+        if (!fs.existsSync(logDir)){
+            fs.mkdirSync(logDir);
+        }
+        fs.writeFileSync(path.join(logDir, 'scrape_all_output.json'), JSON.stringify(allTasks, null, 2));
+
+        console.log("--- All Tasks Results (also saved to log file) ---");
+        console.log(JSON.stringify(allTasks, null, 2));
+        console.log("-------------------------------------------------");
         break;
       default:
         throw new Error(`Neznámý příkaz: ${command}`);
